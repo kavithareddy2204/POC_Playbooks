@@ -52,8 +52,8 @@
 - name: "change the line in ngsw file"
   win_lineinfile:
     path: '{{ install_path }}\{{app_pool_name}}\{{ service_name }}\wwwroot\ngsw.json'
-    regexp: '^(.)sas.mobile.portal(.)$'
-    line: 'Mobile/sas.mobile.portal'
+    regexp: '^(.)mobile.portal(.)$'
+    line: 'Mobile/mobile.portal'
     state: present
     backrefs: yes 
   when: folder == 'MP'
@@ -63,10 +63,10 @@
   vars:
     folder: "{{ item.name }}"
     service_name: "{{ item.service }}"
-    json_file: "appsettings.sas.json"
+    json_file: "appsettings.json"
     webconfig_j2: "{{ item.webconfig_file }}"
     appsetting_j2: "{{ item.json_j2_file }}"
     ext: "{{ external_service }}"
-    webconfig_extn: "sas"
+    webconfig_extn: "system"
   with_items: "{{ service_list_external }}"
   when: (service_type == 'external') or (service_type == 'both') or (service_type == 'extmob')
