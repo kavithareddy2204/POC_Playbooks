@@ -1,0 +1,72 @@
+ name: "Stop the {{ service_name }} service"
+  win_iis_webapppool:
+    name: "{{ app_pool }}"
+    state: stopped
+  when: service_folder_status.stat.exists is match('True')
+
+- name: "Delete {{ service_name }} folder"
+  win_file:
+    path: '{{ install_path }}\{{app_pool_name}}\{{ service_name }}'
+    state: absent
+  when: service_folder_status.stat.exists is match('True')
+
+- name: "Download Artifactory of {{ service_name }} zip file"
+  win_get_url:
+    url: "{{ binary_url }}/{{ service_name }}/{{ service_name }}.zip"
+    dest: "{{ install_path }}"
+
+- name: "Unzip the {{ service_name }} zip file"
+  win_unzip:
+    src: '{{ install_path }}\{{ service_name }}.zip'
+    dest: '{{ install_path }}\{{app_pool_name}}\{{ service_name }}'
+    recurse: no
+    delete_archive: yes
+
+- name: "Copy appsettings to {{ service_name }} folder"
+  win_template:
+    src: "{{ appsetting_j2 }}"
+    dest: '{{ install_path }}\{{app_pool_name}}\{{ service_name }}\{{ json_file }}'
+    force: yes
+  when: appsetting_j2 is defined
+
+- name: "Copy config file to {{ service_name }} folder"
+  win_template:
+    src: "{{ webconfig_j2 }}"
+    dest: '{{ install_path }}\{{app_pool_name}}\{{ service_name }}\web.config'
+    force: yes
+  when: webconfig_j2 is defined
+
+- name: "change the line in root index.html"
+  win_lineinfile:
+    path: '{{ install_path }}\{{app_pool_name}}\{{ service_name }}\wwwroot\index.html'
+    regexp: '<base href="/{{ service_name }}/">'
+    line: '<base href="/{{ application_name }}/{{ service_name }}/">'
+    backrefs: yes
+  #when: (folder == 'EP' or folder == 'IP') and (href_env == 'lowerenv') 
+  when: (folder == 'EP' or folder == 'IP' or folder == 'MP') and href_change is defined
+
+- name: "exectuting task for help files"
+  include_tasks: help_files.yml
+  when: folder == 'EP'
+
+- name: "change the line in ngsw file"
+  win_lineinfile:
+    path: '{{ install_path }}\{{app_pool_name}}\{{ service_name }}\wwwroot\ngsw.json'
+    regexp: '^(.)sas.mobile.portal(.)$'
+    line: 'Mobile/sas.mobile.portal'
+    state: present
+    backrefs: yes 
+  when: folder == 'MP'
+
+- name: "Configuration of External App pool {{ app_pool_name }}"
+  include_tasks: webapp_configuration.yml
+  vars:
+    folder: "{{ item.name }}"
+    service_name: "{{ item.service }}"
+    json_file: "appsettings.sas.json"
+    webconfig_j2: "{{ item.webconfig_file }}"
+    appsetting_j2: "{{ item.json_j2_file }}"
+    ext: "{{ external_service }}"
+    webconfig_extn: "sas"
+  with_items: "{{ service_list_external }}"
+  when: (service_type == 'external') or (service_type == 'both') or (service_type == 'extmob')
