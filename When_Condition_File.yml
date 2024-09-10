@@ -70,3 +70,12 @@
     webconfig_extn: "system"
   with_items: "{{ service_list_external }}"
   when: (service_type == 'external') or (service_type == 'both') or (service_type == 'extmob')
+
+- name: "Add {{ service_name }} under site {{ site_name }} if applicaion_name variable not defined"
+  win_iis_webapplication:
+   name: "{{ service_name }}"
+   site: "{{ site_name }}"
+   state: present
+   application_pool: "{{ app_pool }}"
+   physical_path: '{{ install_path }}\{{app_pool_name}}\{{ service_name }}'
+  when: application_name is not defined
